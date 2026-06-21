@@ -7,7 +7,6 @@ on:
 
 jobs:
   compile:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -19,5 +18,26 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn compile
+  
+  security-check:
+    runs-on: ubuntu-latest
 
+    steps:
+    - uses: actions/checkout@v4
+    - name: trivy Fs scan
+      run: |
+        sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy -y
+
+    - name: Run trivy FS scan
+      run: trivy fs --format json --output trivy-report.json .
+
+    - name: gitleaks scan
+      run: sudo apt-get install gitleaks -y
+    - name: Gitleaks code scan
+      run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json  
+        
